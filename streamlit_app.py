@@ -581,6 +581,38 @@ def render_portfolio_cards(accounts: list[dict]) -> None:
     html.append("</div>")
     st.markdown("".join(html), unsafe_allow_html=True)
 
+
+def render_section_head(title: str, subtitle: str) -> None:
+    st.markdown(
+        f"""
+        <div class="ontop-section-head">
+            <h3>{escape(title)}</h3>
+            <p>{escape(subtitle)}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_review_cards(report: dict) -> None:
+    total_stable = report["stable_red"] + report["stable_yellow"] + report["stable_green"]
+    cards = [
+        ("Accounts", str(report["total_accounts"]), ""),
+        ("Graduated", str(len(report["graduated"])), "ontop-mini-stat-green"),
+        ("Escalated", str(len(report["escalated"])), "ontop-mini-stat-red"),
+        ("Stable", str(total_stable), "ontop-mini-stat-purple"),
+        ("Stable RED", str(report["stable_red"]), "ontop-mini-stat-coral"),
+        ("Stable GREEN", str(report["stable_green"]), "ontop-mini-stat-amber"),
+    ]
+    html = ['<div class="ontop-mini-stats">']
+    for label, value, tone in cards:
+        html.append(
+            f'<div class="ontop-mini-stat {tone}"><span>{escape(label)}</span>'
+            f'<strong>{escape(value)}</strong></div>'
+        )
+    html.append("</div>")
+    st.markdown("".join(html), unsafe_allow_html=True)
+
 # ---------------------------------------------------------------------------
 # Data helpers
 # ---------------------------------------------------------------------------
@@ -777,6 +809,16 @@ def render_tab_accounts() -> None:
 
     render_portfolio_cards(accounts)
 
+    # --- Coverage Router re-classify ---
+    control_copy, control_action = st.columns([2.8, 1], vertical_alignment="bottom")
+    with control_copy:
+        render_section_head(
+            "Account Health",
+            "Filter the portfolio and re-run lane assignment when account signals change.",
+        )
+    with control_action:
+        run_router_clicked = st.button("Run Coverage Router", type="primary", use_container_width=True)
+
     # --- Lane filter buttons ---
     col_all, col_red, col_yel, col_grn, _spacer = st.columns([1, 1, 1, 1, 5])
 
@@ -794,44 +836,7 @@ def render_tab_accounts() -> None:
         a for a in accounts if a["current_lane"] == lane_filter
     ]
 
-    # --- Styled dataframe ---
-    df = accounts_to_df(filtered)
-
-    def _row_style(row: pd.Series) -> list[str]:
-        bg = LANE_BG.get(row["_lane"], "")
-        return [f"background-color: {bg}"] * len(row)
-
-    visible_cols = ["Company", "Lane", "Churn Score", "Sentiment", "ARR",
-                    "Days No Contact", "Open Tickets"]
-
-    styled = (
-        df.style
-        .apply(_row_style, axis=1)
-        .hide(subset=["_lane"], axis="columns")
-        .format({"ARR": "${:,.0f}"})
-    )
-
-    st.dataframe(
-        styled,
-        column_config={
-            "Churn Score": st.column_config.ProgressColumn(
-                "Churn Score", min_value=0, max_value=100, format="%d"
-            ),
-            "ARR": st.column_config.NumberColumn("ARR", format="$%,.0f"),
-        },
-        use_container_width=True,
-        hide_index=True,
-    )
-    st.caption(f"Showing {len(filtered)} of {len(accounts)} accounts  ·  "
-               f"Active filter: **{lane_filter}**")
-
-    st.divider()
-
-    # --- Coverage Router re-classify ---
-    st.subheader("Re-classify Accounts")
-    st.write("Re-run the Coverage Router against current signal values and update lane assignments in `data/accounts.json`.")
-
-    if st.button("🔄 Run Coverage Router", type="primary"):
+    if run_router_clicked:
         changes: list[dict] = []
         updated: list[dict] = []
         now_iso = datetime.now(timezone.utc).isoformat()
@@ -871,23 +876,60 @@ def render_tab_accounts() -> None:
         st.session_state.last_router_run = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         st.rerun()
 
-    # Show diff from last run
-    if st.session_state.router_changes is None:
-        pass  # Never run — show nothing
-    elif not st.session_state.router_changes:
-        st.info("✅ Coverage Router ran — all accounts are already in the correct lane.")
-    else:
-        changes = st.session_state.router_changes
-        st.success(f"✅ Coverage Router complete — **{len(changes)}** account(s) changed lane")
+    # --- Styled dataframe + router result ---
+    table_col, router_col = st.columns([2.2, 1], gap="large")
 
-        for ch in changes:
-            old_e = LANE_EMOJI.get(ch["from"], "⚪")
-            new_e = LANE_EMOJI.get(ch["to"], "⚪")
-            with st.container(border=True):
-                col_name, col_change = st.columns([2, 1])
-                col_name.markdown(f"**{ch['company']}** · `{ch['id']}`")
-                col_change.markdown(f"{old_e} {ch['from']} → {new_e} {ch['to']}")
-                st.caption("Rules fired: " + "  |  ".join(ch["rules"]))
+    with table_col:
+        df = accounts_to_df(filtered)
+
+        def _row_style(row: pd.Series) -> list[str]:
+            bg = LANE_BG.get(row["_lane"], "")
+            return [f"background-color: {bg}"] * len(row)
+
+        styled = (
+            df.style
+            .apply(_row_style, axis=1)
+            .hide(subset=["_lane"], axis="columns")
+            .format({"ARR": "${:,.0f}"})
+        )
+
+        st.dataframe(
+            styled,
+            column_config={
+                "Churn Score": st.column_config.ProgressColumn(
+                    "Churn Score", min_value=0, max_value=100, format="%d"
+                ),
+                "ARR": st.column_config.NumberColumn("ARR", format="$%,.0f"),
+            },
+            use_container_width=True,
+            hide_index=True,
+            height=430,
+        )
+        st.caption(f"Showing {len(filtered)} of {len(accounts)} accounts  ·  "
+                   f"Active filter: **{lane_filter}**")
+
+    with router_col:
+        render_section_head(
+            "Router Run",
+            "Latest account movements from deterministic lane rules.",
+        )
+
+        if st.session_state.router_changes is None:
+            st.info("Run the router to compare stored lanes with current account signals.")
+        elif not st.session_state.router_changes:
+            st.success("Coverage Router complete. All accounts are already in the correct lane.")
+        else:
+            changes = st.session_state.router_changes
+            st.success(f"{len(changes)} account(s) changed lane")
+
+            for ch in changes:
+                old_e = LANE_EMOJI.get(ch["from"], "⚪")
+                new_e = LANE_EMOJI.get(ch["to"], "⚪")
+                with st.container(border=True):
+                    st.markdown(f"**{ch['company']}**")
+                    st.caption(f"`{ch['id']}`")
+                    st.markdown(f"{old_e} {ch['from']} → {new_e} {ch['to']}")
+                    st.caption("Rules fired: " + "  |  ".join(ch["rules"]))
 
 
 # ---------------------------------------------------------------------------
@@ -980,10 +1022,28 @@ def render_tab_tech_touch() -> None:
         )
         return
 
-    col_form, col_preview = st.columns([1, 1], gap="large")
+    approvals = load_approvals()
+    pending = sum(1 for a in approvals if a["status"] == "pending_approval")
+    approved = sum(1 for a in approvals if a["status"] == "approved")
+    st.markdown(
+        f"""
+        <div class="ontop-mini-stats" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
+            <div class="ontop-mini-stat ontop-mini-stat-amber"><span>YELLOW Accounts</span><strong>{len(yellow_accounts)}</strong></div>
+            <div class="ontop-mini-stat ontop-mini-stat-purple"><span>Templates</span><strong>{len(_TEMPLATE_FIELDS)}</strong></div>
+            <div class="ontop-mini-stat ontop-mini-stat-coral"><span>Pending Drafts</span><strong>{pending}</strong></div>
+            <div class="ontop-mini-stat ontop-mini-stat-green"><span>Approved</span><strong>{approved}</strong></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col_form, col_preview = st.columns([0.95, 1.35], gap="large")
 
     with col_form:
-        st.subheader("Configure")
+        render_section_head(
+            "Compose",
+            "Choose the account, outreach play, and context for the draft.",
+        )
 
         # Account selector (YELLOW only)
         account_map = {a["company_name"]: a for a in yellow_accounts}
@@ -1036,12 +1096,15 @@ def render_tab_tech_touch() -> None:
 
     # --- Preview pane ---
     with col_preview:
-        st.subheader("Preview")
+        render_section_head(
+            "Approval Preview",
+            "Review the generated message before it enters the approval queue.",
+        )
 
         if not st.session_state.tt_generated:
             st.markdown(
-                "<div style='border:1px dashed #444;border-radius:8px;padding:48px;"
-                "text-align:center;color:#777;font-size:0.9rem'>"
+                "<div class='ontop-table-shell' style='padding:3rem 1.25rem;"
+                "text-align:center;color:#B8B8C8;font-size:0.95rem'>"
                 "Configure and generate an email to see the preview here."
                 "</div>",
                 unsafe_allow_html=True,
@@ -1128,6 +1191,10 @@ def render_tab_sprint_review() -> None:
     # Header row
     hdr_col, btn_col = st.columns([3, 1])
     with hdr_col:
+        render_section_head(
+            "Review Control",
+            "Run a portfolio rotation and compare current health signals against stored lanes.",
+        )
         if latest_report:
             n_grad = len(latest_report["graduated"])
             n_esc  = len(latest_report["escalated"])
@@ -1162,14 +1229,44 @@ def render_tab_sprint_review() -> None:
     if not report:
         return
 
+    render_review_cards(report)
+
+    # --- Narrative + action items ---
+    narr_col, items_col = st.columns([1.3, 1], gap="large")
+
+    with narr_col:
+        render_section_head(
+            "Narrative Summary",
+            "Portfolio health and the priorities for the current review.",
+        )
+        with st.container(border=True):
+            st.write(report.get("narrative_summary", ""))
+
+    with items_col:
+        render_section_head(
+            "CSM Action Items",
+            "Check off the highest priority follow-ups for this sprint.",
+        )
+        items = report.get("csm_action_items", [])
+        if items:
+            for i, item in enumerate(items):
+                # Use report_date in key to avoid key collisions across runs
+                st.checkbox(item, key=f"action_{report.get('report_date','x')}_{i}")
+        else:
+            st.caption("No action items generated")
+
     st.divider()
+    render_section_head(
+        "Lane Movement",
+        "Graduations, escalations, and stable accounts from the latest review.",
+    )
 
     # --- Three-column lane change results ---
     col_g, col_e, col_s = st.columns(3, gap="medium")
 
     with col_g:
         count = len(report["graduated"])
-        st.markdown(f"### 🟢 Graduated  ({count})")
+        st.markdown(f"### Graduated  ({count})")
         st.caption("Accounts moving to a healthier lane")
         if report["graduated"]:
             for a in report["graduated"]:
@@ -1185,7 +1282,7 @@ def render_tab_sprint_review() -> None:
 
     with col_e:
         count = len(report["escalated"])
-        st.markdown(f"### 🔴 Escalated  ({count})")
+        st.markdown(f"### Escalated  ({count})")
         st.caption("Accounts requiring CSM attention")
         if report["escalated"]:
             for a in report["escalated"]:
@@ -1201,31 +1298,11 @@ def render_tab_sprint_review() -> None:
 
     with col_s:
         total_stable = report["stable_red"] + report["stable_yellow"] + report["stable_green"]
-        st.markdown(f"### ➡️ Stable  ({total_stable})")
+        st.markdown(f"### Stable  ({total_stable})")
         st.caption("No lane change this sprint")
         st.metric("🔴 Stable RED",    report["stable_red"])
         st.metric("🟡 Stable YELLOW", report["stable_yellow"])
         st.metric("🟢 Stable GREEN",  report["stable_green"])
-
-    st.divider()
-
-    # --- Narrative + action items ---
-    narr_col, items_col = st.columns([3, 2], gap="large")
-
-    with narr_col:
-        st.subheader("📋 Narrative Summary")
-        with st.container(border=True):
-            st.write(report.get("narrative_summary", ""))
-
-    with items_col:
-        st.subheader("✅ CSM Action Items")
-        items = report.get("csm_action_items", [])
-        if items:
-            for i, item in enumerate(items):
-                # Use report_date in key to avoid key collisions across runs
-                st.checkbox(item, key=f"action_{report.get('report_date','x')}_{i}")
-        else:
-            st.caption("No action items generated")
 
 
 # ---------------------------------------------------------------------------
