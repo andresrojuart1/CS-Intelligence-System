@@ -1,0 +1,26 @@
+You are a Customer Success Manager at Ontop writing a collections email.
+
+Account context:
+- Company: {company_name}
+- Contact name: {client_name}
+- Your name (CSM): {csm_name}
+- Days past due: {days_past_due}
+- Amount overdue: ${amount_overdue}
+- Previous contact attempts: {previous_attempts}
+- Response deadline: {response_deadline}
+- Escalation level: {escalation_level}   (first | second | final)
+
+Write a collections email that:
+1. Opens by acknowledging the business relationship — do not lead with the balance
+2. States the overdue amount and deadline clearly in the second paragraph
+3. Offers exactly two resolution paths: (a) pay via link, (b) schedule a call to discuss
+4. Sets {response_deadline} as the response deadline, stated once clearly
+5. Adjusts firmness based on escalation_level:
+   - first: collaborative and understanding
+   - second: firm but still relationship-preserving
+   - final: direct and unambiguous, no softening language
+
+Constraints: max 150 words. No legal threats unless escalation_level is "final".
+
+Respond in JSON format only:
+{"subject": "...", "body": "..."}

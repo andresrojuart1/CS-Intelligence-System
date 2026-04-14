@@ -1,0 +1,122 @@
+[
+  {
+    "account_id": "ACC-001",
+    "company_name": "Redstone Global",
+    "current_lane": "RED",
+    "lane_assigned_date": "2026-03-17T00:00:00+00:00",
+    "churn_score": 85,
+    "sentiment": "negative",
+    "arr": 120000.0,
+    "days_since_last_contact": 30,
+    "open_tickets": 6,
+    "note": "Stable RED — high churn, negative sentiment, many tickets"
+  },
+  {
+    "account_id": "ACC-002",
+    "company_name": "Meridian Staffing",
+    "current_lane": "RED",
+    "lane_assigned_date": "2026-03-17T00:00:00+00:00",
+    "churn_score": 55,
+    "sentiment": "neutral",
+    "arr": 78000.0,
+    "days_since_last_contact": 18,
+    "open_tickets": 1,
+    "note": "About to GRADUATE RED→YELLOW — scores improved since last sprint"
+  },
+  {
+    "account_id": "ACC-003",
+    "company_name": "Axiom Workforce",
+    "current_lane": "YELLOW",
+    "lane_assigned_date": "2026-03-17T00:00:00+00:00",
+    "churn_score": 60,
+    "sentiment": "neutral",
+    "arr": 95000.0,
+    "days_since_last_contact": 20,
+    "open_tickets": 2,
+    "note": "Stable YELLOW — churn in band, contact is stale"
+  },
+  {
+    "account_id": "ACC-004",
+    "company_name": "Pulsar Contracts",
+    "current_lane": "YELLOW",
+    "lane_assigned_date": "2026-03-17T00:00:00+00:00",
+    "churn_score": 45,
+    "sentiment": "positive",
+    "arr": 42000.0,
+    "days_since_last_contact": 16,
+    "open_tickets": 0,
+    "note": "Stable YELLOW — low-risk but contact is slightly stale"
+  },
+  {
+    "account_id": "ACC-005",
+    "company_name": "Lumina People",
+    "current_lane": "YELLOW",
+    "lane_assigned_date": "2026-03-17T00:00:00+00:00",
+    "churn_score": 25,
+    "sentiment": "positive",
+    "arr": 64000.0,
+    "days_since_last_contact": 8,
+    "open_tickets": 0,
+    "note": "About to GRADUATE YELLOW→GREEN — all scores now in green range"
+  },
+  {
+    "account_id": "ACC-006",
+    "company_name": "Crestline Operations",
+    "current_lane": "YELLOW",
+    "lane_assigned_date": "2026-03-17T00:00:00+00:00",
+    "churn_score": 80,
+    "sentiment": "negative",
+    "arr": 110000.0,
+    "days_since_last_contact": 25,
+    "open_tickets": 5,
+    "note": "About to ESCALATE YELLOW→RED — churn spiked, sentiment flipped"
+  },
+  {
+    "account_id": "ACC-007",
+    "company_name": "Helix Talent",
+    "current_lane": "GREEN",
+    "lane_assigned_date": "2026-03-17T00:00:00+00:00",
+    "churn_score": 10,
+    "sentiment": "positive",
+    "arr": 200000.0,
+    "days_since_last_contact": 5,
+    "open_tickets": 0,
+    "note": "Stable GREEN — flagship healthy account"
+  },
+  {
+    "account_id": "ACC-008",
+    "company_name": "Tempo Hire",
+    "current_lane": "GREEN",
+    "lane_assigned_date": "2026-03-17T00:00:00+00:00",
+    "churn_score": 20,
+    "sentiment": "neutral",
+    "arr": 37000.0,
+    "days_since_last_contact": 7,
+    "open_tickets": 0,
+    "note": "Stable GREEN — small but healthy"
+  },
+  {
+    "account_id": "ACC-009",
+    "company_name": "Navara Consulting",
+    "current_lane": "GREEN",
+    "lane_assigned_date": "2026-03-17T00:00:00+00:00",
+    "churn_score": 50,
+    "sentiment": "neutral",
+    "arr": 82000.0,
+    "days_since_last_contact": 10,
+    "open_tickets": 0,
+    "note": "About to ESCALATE GREEN→YELLOW — churn score crossed into band"
+  },
+  {
+    "account_id": "ACC-010",
+    "company_name": "Brightpath HR",
+    "current_lane": "GREEN",
+    "lane_assigned_date": "2026-03-17T00:00:00+00:00",
+    "churn_score": 15,
+    "sentiment": "positive",
+    "arr": 155000.0,
+    "days_since_last_contact": 3,
+    "open_tickets": 0,
+    "note": "Stable GREEN — recent contact, strong health signals"
+  }
+]

@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local app outputs
+approvals.json
+reports/
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/

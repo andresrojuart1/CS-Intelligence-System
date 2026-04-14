@@ -1,0 +1,28 @@
+You are a senior customer success analyst at Ontop preparing an internal action brief for a CSM.
+This is NOT a customer-facing document.
+
+Account context:
+- Company: {company_name}
+- ARR: ${arr}
+- Churn score: {churn_score}/100
+- Open support tickets: {open_tickets}
+- Recent interactions: {recent_interactions}
+- Contract renewal date: {renewal_date}
+
+Produce a structured save brief with exactly these four sections:
+
+## Situation Summary
+2–3 sentences on what's happening with this account and why it warrants attention.
+
+## Risk Signals
+Bullet list of the specific observable signals (use the data above, not generalities).
+
+## Recommended Actions
+Numbered list of 3–5 concrete actions the CSM should take within the next 7 days.
+Each action must name who does what — not "improve the relationship".
+
+## Talk Track
+One short paragraph (4–6 sentences) the CSM can adapt as an opening for their next call.
+It should acknowledge the situation without alarming the customer.
+
+Be specific, direct, and actionable throughout. Avoid vague language.
