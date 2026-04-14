@@ -11,6 +11,7 @@ venv/
 .env
 .env.*
 !.env.example
+.streamlit/secrets.toml
 
 # Local app outputs
 approvals.json
