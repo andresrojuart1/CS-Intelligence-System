@@ -140,6 +140,7 @@ _MOCK_SPRINT_SUMMARY = {
 
 _SESSION_DEFAULTS: dict = {
     "lane_filter":      "ALL",      # Tab 1 active filter
+    "portfolio_search": "",         # Portfolio search query
     "router_changes":   None,       # None=never run, []=ran+no changes, [...]=changes
     "last_router_run":  None,       # ISO timestamp string
     "tt_generated":     None,       # Approval record dict from last Tech-Touch run
@@ -613,6 +614,48 @@ def render_review_cards(report: dict) -> None:
     html.append("</div>")
     st.markdown("".join(html), unsafe_allow_html=True)
 
+
+def account_priority_score(account: dict) -> float:
+    """Ranks accounts for the Command Center work queue."""
+    lane_weight = {"RED": 1000, "YELLOW": 550, "GREEN": 0}.get(account.get("current_lane"), 0)
+    stale_bonus = 180 if int(account.get("days_since_last_contact", 0)) > 14 else 0
+    ticket_bonus = min(int(account.get("open_tickets", 0)), 8) * 55
+    churn_bonus = float(account.get("churn_score", 0)) * 4
+    arr_bonus = min(float(account.get("arr", 0)) / 1000, 250)
+    return lane_weight + stale_bonus + ticket_bonus + churn_bonus + arr_bonus
+
+
+def get_priority_accounts(accounts: list[dict], limit: int = 8) -> list[dict]:
+    return sorted(accounts, key=account_priority_score, reverse=True)[:limit]
+
+
+def priority_reason(account: dict) -> str:
+    reasons: list[str] = []
+    if account.get("current_lane") == "RED":
+        reasons.append("human touch")
+    elif account.get("current_lane") == "YELLOW":
+        reasons.append("tech touch")
+    if int(account.get("days_since_last_contact", 0)) > 14:
+        reasons.append(f"{account['days_since_last_contact']}d no contact")
+    if int(account.get("open_tickets", 0)) > 0:
+        reasons.append(f"{account['open_tickets']} tickets")
+    if int(account.get("churn_score", 0)) >= 70:
+        reasons.append("high health risk")
+    return " · ".join(reasons) or "monitor"
+
+
+def priority_accounts_df(accounts: list[dict]) -> pd.DataFrame:
+    return pd.DataFrame([
+        {
+            "Account": a["company_name"],
+            "Lane": f"{LANE_EMOJI.get(a['current_lane'], '⚪')} {a['current_lane']}",
+            "ARR": a["arr"],
+            "Health": a["churn_score"],
+            "Reason": priority_reason(a),
+        }
+        for a in accounts
+    ])
+
 # ---------------------------------------------------------------------------
 # Data helpers
 # ---------------------------------------------------------------------------
@@ -792,7 +835,108 @@ def render_sidebar() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Tab 1 — Account Overview
+# Command Center
+# ---------------------------------------------------------------------------
+
+def render_tab_command_center() -> None:
+    render_page_hero(
+        "Command Center",
+        "Start with the accounts, drafts, and movements that need a decision.",
+        "Built for daily CSM execution and leadership review: prioritize the work, inspect risk, and move into the right queue.",
+    )
+
+    accounts = load_accounts()
+    if not accounts:
+        st.warning("No accounts found — check `data/accounts.json`.")
+        return
+
+    approvals = load_approvals()
+    pending_approvals = [a for a in approvals if a.get("status") == "pending_approval"]
+    latest_report = st.session_state.sprint_report or get_latest_report()
+
+    render_portfolio_cards(accounts)
+
+    work_col, queue_col, movement_col = st.columns([1.55, 1, 1], gap="large")
+
+    with work_col:
+        render_section_head(
+            "Priority Work Queue",
+            "Accounts ranked by lane, stale contact, tickets, health score, and ARR.",
+        )
+        priority_df = priority_accounts_df(get_priority_accounts(accounts))
+        st.dataframe(
+            priority_df,
+            column_config={
+                "ARR": st.column_config.NumberColumn("ARR", format="$%,.0f"),
+                "Health": st.column_config.ProgressColumn(
+                    "Health", min_value=0, max_value=100, format="%d"
+                ),
+            },
+            use_container_width=True,
+            hide_index=True,
+            height=340,
+        )
+
+    with queue_col:
+        render_section_head(
+            "Approval Queue",
+            "Drafts waiting for CSM review before anything goes out.",
+        )
+        if pending_approvals:
+            for rec in pending_approvals[:5]:
+                with st.container(border=True):
+                    st.markdown(f"**{rec.get('company_name', 'Unknown account')}**")
+                    st.caption(f"{rec.get('template_type', 'draft')} · {rec.get('generated_at', '')[:10]}")
+                    subject = rec.get("subject", "No subject")
+                    st.write(subject)
+        else:
+            st.info("No pending drafts. Generate tech-touch outreach when YELLOW accounts need a nudge.")
+
+    with movement_col:
+        render_section_head(
+            "Recent Movement",
+            "Latest sprint review signal for leadership and CSM planning.",
+        )
+        if latest_report:
+            st.metric("Graduated", len(latest_report.get("graduated", [])))
+            st.metric("Escalated", len(latest_report.get("escalated", [])))
+            st.caption(f"Last review: {latest_report.get('report_date', '—')}")
+            escalated = latest_report.get("escalated", [])
+            if escalated:
+                st.markdown("**Top escalation**")
+                st.write(escalated[0]["company"])
+                st.caption(escalated[0]["reason"])
+        else:
+            st.info("No sprint review yet. Run one to populate account movement.")
+
+    st.divider()
+
+    csm_col, vp_col, exec_col = st.columns(3, gap="large")
+    with csm_col:
+        render_section_head("CSM View", "What should I do today?")
+        st.markdown(
+            "- Work RED accounts first\n"
+            "- Approve or reject pending drafts\n"
+            "- Follow up on stale YELLOW accounts"
+        )
+    with vp_col:
+        render_section_head("VP View", "Where is the team exposed?")
+        st.markdown(
+            "- Watch escalations and ARR concentration\n"
+            "- Compare portfolio movement by sprint\n"
+            "- Track approval queue quality and volume"
+        )
+    with exec_col:
+        render_section_head("C-Level View", "What changed in customer health?")
+        st.markdown(
+            "- Monitor ARR at risk\n"
+            "- Review net movement in customer health\n"
+            "- Identify strategic accounts needing intervention"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Portfolio
 # ---------------------------------------------------------------------------
 
 def render_tab_accounts() -> None:
@@ -835,6 +979,46 @@ def render_tab_accounts() -> None:
     filtered = accounts if lane_filter == "ALL" else [
         a for a in accounts if a["current_lane"] == lane_filter
     ]
+
+    search_col, sort_col = st.columns([2.2, 1], gap="large")
+    search_query = search_col.text_input(
+        "Search accounts",
+        value=st.session_state.portfolio_search,
+        placeholder="Company name or account id",
+    ).strip()
+    st.session_state.portfolio_search = search_query
+    sort_mode = sort_col.selectbox(
+        "Sort by",
+        options=[
+            "Priority",
+            "ARR",
+            "Churn Score",
+            "Days Since Contact",
+            "Open Tickets",
+            "Company",
+        ],
+    )
+
+    if search_query:
+        q = search_query.lower()
+        filtered = [
+            a for a in filtered
+            if q in a["company_name"].lower() or q in a["account_id"].lower()
+        ]
+
+    sorters = {
+        "Priority": lambda a: account_priority_score(a),
+        "ARR": lambda a: float(a.get("arr", 0)),
+        "Churn Score": lambda a: int(a.get("churn_score", 0)),
+        "Days Since Contact": lambda a: int(a.get("days_since_last_contact", 0)),
+        "Open Tickets": lambda a: int(a.get("open_tickets", 0)),
+        "Company": lambda a: a.get("company_name", "").lower(),
+    }
+    filtered = sorted(
+        filtered,
+        key=sorters[sort_mode],
+        reverse=sort_mode != "Company",
+    )
 
     if run_router_clicked:
         changes: list[dict] = []
@@ -880,31 +1064,36 @@ def render_tab_accounts() -> None:
     table_col, router_col = st.columns([2.2, 1], gap="large")
 
     with table_col:
-        df = accounts_to_df(filtered)
+        if not filtered:
+            st.info("No accounts match the current filter and search.")
+            df = pd.DataFrame()
+        else:
+            df = accounts_to_df(filtered)
 
         def _row_style(row: pd.Series) -> list[str]:
             bg = LANE_BG.get(row["_lane"], "")
             return [f"background-color: {bg}"] * len(row)
 
-        styled = (
-            df.style
-            .apply(_row_style, axis=1)
-            .hide(subset=["_lane"], axis="columns")
-            .format({"ARR": "${:,.0f}"})
-        )
+        if not df.empty:
+            styled = (
+                df.style
+                .apply(_row_style, axis=1)
+                .hide(subset=["_lane"], axis="columns")
+                .format({"ARR": "${:,.0f}"})
+            )
 
-        st.dataframe(
-            styled,
-            column_config={
-                "Churn Score": st.column_config.ProgressColumn(
-                    "Churn Score", min_value=0, max_value=100, format="%d"
-                ),
-                "ARR": st.column_config.NumberColumn("ARR", format="$%,.0f"),
-            },
-            use_container_width=True,
-            hide_index=True,
-            height=430,
-        )
+            st.dataframe(
+                styled,
+                column_config={
+                    "Churn Score": st.column_config.ProgressColumn(
+                        "Churn Score", min_value=0, max_value=100, format="%d"
+                    ),
+                    "ARR": st.column_config.NumberColumn("ARR", format="$%,.0f"),
+                },
+                use_container_width=True,
+                hide_index=True,
+                height=430,
+            )
         st.caption(f"Showing {len(filtered)} of {len(accounts)} accounts  ·  "
                    f"Active filter: **{lane_filter}**")
 
@@ -1007,9 +1196,9 @@ def _render_context_fields(template_type: str) -> dict:
 
 def render_tab_tech_touch() -> None:
     render_page_hero(
-        "Tech Touch",
-        "Draft customer outreach for accounts that need a light human nudge.",
-        "Generate tailored emails for YELLOW-lane accounts and keep every message in the CSM approval queue.",
+        "Tech-Touch Queue",
+        "Approve drafts and compose outreach for accounts that need a light human nudge.",
+        "Use the queue as the daily review surface, then generate new YELLOW-lane messages when coverage needs automation.",
     )
 
     accounts = load_accounts()
@@ -1036,6 +1225,19 @@ def render_tab_tech_touch() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+    if pending:
+        with st.expander("Pending approval queue", expanded=True):
+            pending_rows = pd.DataFrame([
+                {
+                    "Account": rec.get("company_name", ""),
+                    "Template": rec.get("template_type", ""),
+                    "Subject": rec.get("subject", ""),
+                    "Generated": rec.get("generated_at", "")[:16].replace("T", " "),
+                }
+                for rec in approvals if rec.get("status") == "pending_approval"
+            ])
+            st.dataframe(pending_rows, use_container_width=True, hide_index=True, height=220)
 
     col_form, col_preview = st.columns([0.95, 1.35], gap="large")
 
@@ -1312,15 +1514,18 @@ def render_tab_sprint_review() -> None:
 inject_theme()
 render_sidebar()
 
-tab1, tab2, tab3 = st.tabs([
-    "📊 Account Overview",
-    "✉️ Tech-Touch Agent",
-    "🔄 Sprint Review",
+tab1, tab2, tab3, tab4 = st.tabs([
+    "Command Center",
+    "Portfolio",
+    "Tech-Touch Queue",
+    "Sprint Review",
 ])
 
 with tab1:
-    render_tab_accounts()
+    render_tab_command_center()
 with tab2:
-    render_tab_tech_touch()
+    render_tab_accounts()
 with tab3:
+    render_tab_tech_touch()
+with tab4:
     render_tab_sprint_review()
