@@ -40,6 +40,15 @@ def _make_openai_mock(subject: str, body: str) -> MagicMock:
     return mock_client
 
 
+def _make_text_openai_mock(body: str) -> MagicMock:
+    """Builds a mock OpenAI client for free-form save_brief responses."""
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.choices[0].message.content = body
+    mock_client.chat.completions.create.return_value = mock_response
+    return mock_client
+
+
 # ---------------------------------------------------------------------------
 # Test fixtures
 # ---------------------------------------------------------------------------
@@ -84,6 +93,22 @@ ACCOUNT_RED = {
     "context": {
         "days_since_last_contact": 30,
         "usage_trend": "no logins in 30 days",
+    },
+}
+
+ACCOUNT_RED_SAVE_BRIEF = {
+    "account_id": "ACC-001",
+    "company_name": "ChurnRisk Corp",
+    "client_name": "James Wu",
+    "csm_name": "Andrés",
+    "template_type": "save_brief",
+    "lane": "RED",
+    "context": {
+        "arr": 120000,
+        "churn_score": 85,
+        "open_tickets": 7,
+        "recent_interactions": "Negative support sentiment and unresolved payroll blockers",
+        "renewal_date": "2026-06-30",
     },
 }
 
@@ -208,6 +233,41 @@ class TestTechTouchAgent:
         assert len(saved) == 2
         assert saved[0]["account_id"] == "ACC-010"
         assert saved[1]["account_id"] == "ACC-012"
+
+    def test_duplicate_pending_approval_is_reused(self, tmp_path):
+        """
+        Re-generating the same account/template while a pending record exists
+        should not create duplicate approval queue rows.
+        """
+        approvals_file = tmp_path / "approvals.json"
+
+        with patch("agents.tech_touch_agent.openai.OpenAI") as MockOpenAI:
+            MockOpenAI.return_value = _make_openai_mock("First subject", "First body")
+            first = run_tech_touch(ACCOUNT_CHECK_IN, approvals_file=approvals_file)
+
+        with patch("agents.tech_touch_agent.openai.OpenAI") as MockOpenAI:
+            MockOpenAI.return_value = _make_openai_mock("Second subject", "Second body")
+            second = run_tech_touch(ACCOUNT_CHECK_IN, approvals_file=approvals_file)
+
+        saved = json.loads(approvals_file.read_text())
+        assert len(saved) == 1
+        assert second["approval_record"]["generated_at"] == first["approval_record"]["generated_at"]
+        assert second["generated_subject"] == "First subject"
+
+    def test_save_brief_allowed_for_red_account(self, tmp_path):
+        """RED accounts can generate an internal save brief without email subject."""
+        approvals_file = tmp_path / "approvals.json"
+        brief = "## Situation Summary\nThis account needs a save motion."
+
+        with patch("agents.tech_touch_agent.openai.OpenAI") as MockOpenAI:
+            MockOpenAI.return_value = _make_text_openai_mock(brief)
+            result = run_tech_touch(ACCOUNT_RED_SAVE_BRIEF, approvals_file=approvals_file)
+
+        assert result["error"] == ""
+        assert result["generated_subject"] == ""
+        assert result["generated_body"] == brief
+        assert result["approval_record"]["template_type"] == "save_brief"
+        assert result["approval_record"]["status"] == "pending_approval"
 
     def test_unknown_template_type_is_rejected(self, tmp_path):
         """An unrecognised template_type should set error without calling OpenAI."""

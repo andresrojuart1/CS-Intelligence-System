@@ -134,6 +134,22 @@ _MOCK_SPRINT_SUMMARY = {
     ),
 }
 
+_MOCK_SAVE_BRIEF = """## Situation Summary
+Crestline Operations is showing multiple account-health signals that warrant direct CSM attention. The account should be handled as a save motion rather than automated customer outreach.
+
+## Risk Signals
+- Elevated account health risk
+- Open support tickets require coordination
+- Recent interaction history suggests the relationship needs a human follow-up
+
+## Recommended Actions
+1. CSM reviews the latest support context before outreach.
+2. CSM schedules a direct call with the account sponsor.
+3. CSM aligns internally with support on ticket resolution ownership.
+
+## Talk Track
+I wanted to connect directly because I saw a few items that deserve a closer look together. My goal is to understand what has changed on your side, make sure we are addressing the right issues, and agree on the next steps with clear ownership."""
+
 # ---------------------------------------------------------------------------
 # Session state — initialise once per session
 # ---------------------------------------------------------------------------
@@ -704,6 +720,25 @@ def update_approval_status(generated_at: str, status: str, notes: str = "") -> b
     return False
 
 
+def latest_approval_record() -> Optional[dict]:
+    approvals = load_approvals()
+    if not approvals:
+        return None
+    pending = [a for a in approvals if a.get("status") == "pending_approval"]
+    candidates = pending or approvals
+    return max(candidates, key=lambda a: a.get("generated_at", ""))
+
+
+def restore_latest_approval_state() -> None:
+    if st.session_state.tt_generated:
+        return
+    latest = latest_approval_record()
+    if not latest:
+        return
+    st.session_state.tt_generated = latest
+    st.session_state.tt_status = latest.get("status", "pending_approval")
+
+
 def get_latest_report() -> Optional[dict]:
     """Returns the most recent sprint_review_*.json from the reports dir."""
     if not REPORTS_DIR.exists():
@@ -876,6 +911,9 @@ def render_tab_command_center() -> None:
             hide_index=True,
             height=340,
         )
+        top_red = [a for a in get_priority_accounts(accounts, limit=8) if a.get("current_lane") == "RED"]
+        if top_red:
+            st.info("RED action path: open Tech-Touch Queue, select a RED account, and generate a Save Brief for the CSM save motion.")
 
     with queue_col:
         render_section_head(
@@ -1042,6 +1080,14 @@ def render_tab_accounts() -> None:
 
                 row = {**acct}
                 if new_lane != old_lane:
+                    lane_history = list(row.get("lane_history", []))
+                    lane_history.append({
+                        "from": old_lane,
+                        "to": new_lane,
+                        "changed_at": now_iso,
+                        "source": "coverage_router",
+                        "reason": " | ".join(result["triggered_rules"]),
+                    })
                     changes.append({
                         "company":  acct["company_name"],
                         "id":       acct["account_id"],
@@ -1052,6 +1098,7 @@ def render_tab_accounts() -> None:
                     row["previous_lane"]     = old_lane
                     row["current_lane"]      = new_lane
                     row["lane_assigned_date"]= now_iso
+                    row["lane_history"]      = lane_history
 
                 updated.append(row)
 
@@ -1152,6 +1199,14 @@ _TEMPLATE_FIELDS: dict[str, list[dict]] = {
         {"key": "milestone_detail", "label": "Milestone detail", "type": "text",
          "default": "100 contractors successfully onboarded"},
     ],
+    "save_brief": [
+        {"key": "arr",                 "label": "ARR ($)",               "type": "number", "default": 100000},
+        {"key": "churn_score",         "label": "Health risk score",     "type": "number", "default": 75},
+        {"key": "open_tickets",        "label": "Open support tickets",  "type": "number", "default": 3},
+        {"key": "recent_interactions", "label": "Recent interactions",   "type": "text",
+         "default": "Recent support activity and limited executive engagement"},
+        {"key": "renewal_date",        "label": "Renewal date",          "type": "text",   "default": "TBD"},
+    ],
 }
 
 _TEMPLATE_LABELS = {
@@ -1159,25 +1214,28 @@ _TEMPLATE_LABELS = {
     "re_engagement":"Re-engagement (usage drop)",
     "collections":  "Collections (overdue invoice)",
     "milestone":    "Milestone celebration",
+    "save_brief":   "Save brief (internal CSM action plan)",
 }
 
 
-def _render_context_fields(template_type: str) -> dict:
+def _render_context_fields(template_type: str, context_defaults: Optional[dict] = None) -> dict:
     """
     Renders the dynamic input fields for the selected template and
     returns a dict of {field_key: value} to pass as agent context.
     """
     fields = _TEMPLATE_FIELDS.get(template_type, [])
     context: dict = {}
+    context_defaults = context_defaults or {}
     cols = st.columns(2)
 
     for i, field in enumerate(fields):
         col = cols[i % 2]
         widget_key = f"ctx_{template_type}_{field['key']}"
+        default_value = context_defaults.get(field["key"], field["default"])
 
         if field["type"] == "number":
             context[field["key"]] = col.number_input(
-                field["label"], value=int(field["default"]), min_value=0, key=widget_key
+                field["label"], value=int(default_value), min_value=0, key=widget_key
             )
         elif field["type"] == "select":
             opts = field["options"]
@@ -1188,7 +1246,7 @@ def _render_context_fields(template_type: str) -> dict:
             )
         else:
             context[field["key"]] = col.text_input(
-                field["label"], value=field["default"], key=widget_key
+                field["label"], value=str(default_value), key=widget_key
             )
 
     return context
@@ -1201,12 +1259,16 @@ def render_tab_tech_touch() -> None:
         "Use the queue as the daily review surface, then generate new YELLOW-lane messages when coverage needs automation.",
     )
 
-    accounts = load_accounts()
-    yellow_accounts = [a for a in accounts if a["current_lane"] == "YELLOW"]
+    restore_latest_approval_state()
 
-    if not yellow_accounts:
+    accounts = load_accounts()
+    eligible_accounts = [a for a in accounts if a["current_lane"] in {"RED", "YELLOW"}]
+    yellow_accounts = [a for a in eligible_accounts if a["current_lane"] == "YELLOW"]
+    red_accounts = [a for a in eligible_accounts if a["current_lane"] == "RED"]
+
+    if not eligible_accounts:
         st.info(
-            "No YELLOW-lane accounts found.  "
+            "No RED or YELLOW accounts found.  "
             "Run the Coverage Router in the Account Overview tab to classify accounts."
         )
         return
@@ -1217,8 +1279,8 @@ def render_tab_tech_touch() -> None:
     st.markdown(
         f"""
         <div class="ontop-mini-stats" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
-            <div class="ontop-mini-stat ontop-mini-stat-amber"><span>YELLOW Accounts</span><strong>{len(yellow_accounts)}</strong></div>
-            <div class="ontop-mini-stat ontop-mini-stat-purple"><span>Templates</span><strong>{len(_TEMPLATE_FIELDS)}</strong></div>
+            <div class="ontop-mini-stat ontop-mini-stat-red"><span>RED Save Briefs</span><strong>{len(red_accounts)}</strong></div>
+            <div class="ontop-mini-stat ontop-mini-stat-amber"><span>YELLOW Outreach</span><strong>{len(yellow_accounts)}</strong></div>
             <div class="ontop-mini-stat ontop-mini-stat-coral"><span>Pending Drafts</span><strong>{pending}</strong></div>
             <div class="ontop-mini-stat ontop-mini-stat-green"><span>Approved</span><strong>{approved}</strong></div>
         </div>
@@ -1232,7 +1294,7 @@ def render_tab_tech_touch() -> None:
                 {
                     "Account": rec.get("company_name", ""),
                     "Template": rec.get("template_type", ""),
-                    "Subject": rec.get("subject", ""),
+                    "Subject": rec.get("subject") or "Internal save brief",
                     "Generated": rec.get("generated_at", "")[:16].replace("T", " "),
                 }
                 for rec in approvals if rec.get("status") == "pending_approval"
@@ -1247,15 +1309,23 @@ def render_tab_tech_touch() -> None:
             "Choose the account, outreach play, and context for the draft.",
         )
 
-        # Account selector (YELLOW only)
-        account_map = {a["company_name"]: a for a in yellow_accounts}
-        company = st.selectbox("Account (YELLOW lane only)", options=list(account_map.keys()))
+        # Account selector (RED save briefs + YELLOW outreach)
+        account_map = {
+            f"{LANE_EMOJI.get(a['current_lane'], '⚪')} {a['company_name']}": a
+            for a in eligible_accounts
+        }
+        company = st.selectbox("Account", options=list(account_map.keys()))
         acct = account_map[company]
+        template_options = (
+            ["save_brief"]
+            if acct["current_lane"] == "RED"
+            else list(_TEMPLATE_FIELDS.keys())
+        )
 
         # Template type
         template_type = st.selectbox(
             "Template type",
-            options=list(_TEMPLATE_FIELDS.keys()),
+            options=template_options,
             format_func=lambda t: _TEMPLATE_LABELS.get(t, t),
         )
 
@@ -1265,13 +1335,25 @@ def render_tab_tech_touch() -> None:
         csm_name    = c2.text_input("CSM name",            value="Andrés")
 
         st.markdown("**Template context**")
-        context = _render_context_fields(template_type)
+        context_defaults = {
+            "arr": acct.get("arr", 0),
+            "churn_score": acct.get("churn_score", 0),
+            "open_tickets": acct.get("open_tickets", 0),
+            "recent_interactions": acct.get("note", "Recent account health signals require CSM review"),
+            "renewal_date": acct.get("renewal_date", "TBD"),
+        }
+        context = _render_context_fields(template_type, context_defaults=context_defaults)
 
-        generate_clicked = st.button("✉️ Generate Email", type="primary", use_container_width=True)
+        cta_label = "Generate Save Brief" if template_type == "save_brief" else "✉️ Generate Email"
+        generate_clicked = st.button(cta_label, type="primary", use_container_width=True)
 
     # --- Handle generation ---
     if generate_clicked:
-        mock_content = json.dumps(_MOCK_EMAILS.get(template_type, _MOCK_EMAILS["check_in"]))
+        mock_content = (
+            _MOCK_SAVE_BRIEF
+            if template_type == "save_brief"
+            else json.dumps(_MOCK_EMAILS.get(template_type, _MOCK_EMAILS["check_in"]))
+        )
         with col_form:
             with st.spinner("Generating…"):
                 try:
@@ -1282,7 +1364,7 @@ def render_tab_tech_touch() -> None:
                             "client_name":  client_name,
                             "csm_name":     csm_name,
                             "template_type":template_type,
-                            "lane":         "YELLOW",
+                            "lane":         acct["current_lane"],
                             "context":      context,
                         })
 
@@ -1325,15 +1407,19 @@ def render_tab_tech_touch() -> None:
         }.get(status, status)
         st.markdown(f"**Status:** {badge}")
 
-        # Email preview card
+        # Email / brief preview card
         with st.container(border=True):
-            st.markdown(
-                f"**To:** {rec.get('client_name', '')} — {rec.get('company_name', '')}"
-            )
-            st.markdown(f"**From:** {rec.get('csm_name', '')}, Ontop CS")
-            st.markdown(f"**Subject:** {rec.get('subject', '')}")
+            if rec.get("template_type") == "save_brief":
+                st.markdown(f"**Internal Brief:** {rec.get('company_name', '')}")
+                st.markdown(f"**Owner:** {rec.get('csm_name', '')}")
+            else:
+                st.markdown(
+                    f"**To:** {rec.get('client_name', '')} — {rec.get('company_name', '')}"
+                )
+                st.markdown(f"**From:** {rec.get('csm_name', '')}, Ontop CS")
+                st.markdown(f"**Subject:** {rec.get('subject', '')}")
             st.divider()
-            st.write(rec.get("body", ""))
+            st.markdown(rec.get("body", ""))
             st.caption(f"Generated: {rec.get('generated_at', '')[:16].replace('T', ' ')} UTC")
 
         if status == "pending_approval":

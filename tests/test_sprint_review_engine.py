@@ -154,6 +154,9 @@ class TestSprintReviewEngine:
         updated = json.loads(accounts_file.read_text())
         assert updated[0]["current_lane"] == "GREEN"
         assert updated[0]["previous_lane"] == "YELLOW"
+        assert updated[0]["lane_history"][-1]["from"] == "YELLOW"
+        assert updated[0]["lane_history"][-1]["to"] == "GREEN"
+        assert updated[0]["lane_history"][-1]["source"] == "sprint_review"
 
     # --- GREEN → YELLOW escalation ---
 

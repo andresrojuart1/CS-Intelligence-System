@@ -113,17 +113,25 @@ def validate_input(state: TechTouchState) -> TechTouchState:
     state["approval_record"] = {}
     state["error"] = ""
 
-    if state["lane"] != "YELLOW":
-        state["error"] = (
-            f"Tech-Touch Agent only handles YELLOW lane accounts. "
-            f"Received lane='{state['lane']}' for account {state['account_id']}."
-        )
-        return state
-
     if state["template_type"] not in VALID_TEMPLATE_TYPES:
         state["error"] = (
             f"Unknown template_type='{state['template_type']}'. "
             f"Must be one of: {sorted(VALID_TEMPLATE_TYPES)}."
+        )
+        return state
+
+    if state["template_type"] == "save_brief":
+        if state["lane"] not in {"RED", "YELLOW"}:
+            state["error"] = (
+                f"save_brief only handles RED or YELLOW lane accounts. "
+                f"Received lane='{state['lane']}' for account {state['account_id']}."
+            )
+        return state
+
+    if state["lane"] != "YELLOW":
+        state["error"] = (
+            f"Tech-Touch email templates only handle YELLOW lane accounts. "
+            f"Received lane='{state['lane']}' for account {state['account_id']}."
         )
         return state
 
@@ -328,6 +336,23 @@ def prepare_approval(
             existing = json.loads(approvals_file.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             existing = []
+
+    for pending in existing:
+        if (
+            pending.get("status") == "pending_approval"
+            and pending.get("account_id") == state["account_id"]
+            and pending.get("template_type") == state["template_type"]
+        ):
+            logger.info(
+                "[TECH-TOUCH] DEDUPE | account=%s template=%s existing=%s",
+                state["account_id"],
+                state["template_type"],
+                pending.get("generated_at", ""),
+            )
+            state["generated_subject"] = pending.get("subject", "")
+            state["generated_body"] = pending.get("body", "")
+            state["approval_record"] = pending
+            return state
 
     existing.append(record)
     approvals_file.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8")

@@ -225,6 +225,15 @@ def update_lanes(state: SprintReviewState) -> SprintReviewState:
             base["previous_lane"] = account["current_lane"]
             base["current_lane"] = account["new_lane"]
             base["lane_assigned_date"] = now_iso
+            lane_history = list(base.get("lane_history", []))
+            lane_history.append({
+                "from": account["current_lane"],
+                "to": account["new_lane"],
+                "changed_at": now_iso,
+                "source": "sprint_review",
+                "reason": " | ".join(account["triggered_rules"]),
+            })
+            base["lane_history"] = lane_history
 
         persisted.append(base)
 
