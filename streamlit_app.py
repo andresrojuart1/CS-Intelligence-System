@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from html import escape
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -151,6 +152,329 @@ for _k, _v in _SESSION_DEFAULTS.items():
     st.session_state.setdefault(_k, _v)
 
 # ---------------------------------------------------------------------------
+# Visual system
+# ---------------------------------------------------------------------------
+
+def inject_theme() -> None:
+    """Applies the dark workspace styling used across the app."""
+    st.markdown(
+        """
+        <style>
+        :root {
+            --bg: #030306;
+            --panel: #0b0b12;
+            --panel-2: #11111b;
+            --panel-3: #171623;
+            --line: rgba(181, 176, 255, 0.22);
+            --line-strong: rgba(181, 176, 255, 0.36);
+            --text: #f4f1ff;
+            --muted: #aaa7bb;
+            --dim: #727081;
+            --violet: #5d43ff;
+            --pink: #ff5f9f;
+            --green: #20d47b;
+            --amber: #f4ae32;
+            --red: #ff4b5f;
+        }
+
+        .stApp {
+            background:
+                radial-gradient(circle at 80% 0%, rgba(255, 95, 159, 0.18), transparent 30rem),
+                radial-gradient(circle at 18% 4%, rgba(93, 67, 255, 0.24), transparent 34rem),
+                linear-gradient(180deg, #060611 0%, var(--bg) 42%, #000000 100%);
+            color: var(--text);
+        }
+
+        .block-container {
+            max-width: 1480px;
+            padding-top: 3.3rem;
+            padding-bottom: 4rem;
+        }
+
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #090912 0%, #050507 56%, #030304 100%);
+            border-right: 1px solid var(--line-strong);
+        }
+
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+            gap: 1rem;
+        }
+
+        [data-testid="stSidebar"] h1 {
+            font-size: 1.62rem;
+            letter-spacing: 0;
+            margin-top: 1rem;
+        }
+
+        [data-testid="stSidebar"] h3 {
+            color: var(--dim);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stMetric"] {
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid rgba(181, 176, 255, 0.14);
+            border-radius: 8px;
+            padding: 0.7rem 0.75rem;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--text);
+            letter-spacing: 0;
+        }
+
+        p, li, label, [data-testid="stMarkdownContainer"] {
+            color: var(--muted);
+        }
+
+        .cs-hero {
+            margin: 0.4rem 0 2.1rem;
+            padding: 2.35rem 2.55rem;
+            border: 1px solid rgba(255, 95, 159, 0.28);
+            border-radius: 8px;
+            background:
+                linear-gradient(115deg, rgba(93, 67, 255, 0.62) 0%, rgba(33, 24, 91, 0.52) 48%, rgba(255, 95, 159, 0.16) 100%),
+                rgba(13, 13, 22, 0.92);
+            box-shadow: 0 22px 70px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+
+        .cs-kicker {
+            display: inline-flex;
+            align-items: center;
+            min-height: 2rem;
+            padding: 0.28rem 0.9rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            font-size: 0.72rem;
+            font-weight: 850;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .cs-hero h1 {
+            max-width: 1100px;
+            margin: 1.65rem 0 1.25rem;
+            color: #ffffff;
+            font-size: clamp(2.2rem, 4.2vw, 4rem);
+            line-height: 1.16;
+            font-weight: 850;
+            letter-spacing: 0;
+        }
+
+        .cs-hero p {
+            max-width: 980px;
+            margin: 0;
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 1.08rem;
+            line-height: 1.55;
+            font-weight: 600;
+        }
+
+        .cs-metric-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 0.9rem;
+            margin: 1.25rem 0 2rem;
+        }
+
+        .cs-card {
+            min-height: 6.25rem;
+            padding: 1.1rem 1.25rem;
+            border-radius: 8px;
+            border: 1px solid rgba(181, 176, 255, 0.2);
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+
+        .cs-card.red { border-color: rgba(255, 75, 95, 0.42); background-color: rgba(255, 75, 95, 0.10); }
+        .cs-card.yellow { border-color: rgba(244, 174, 50, 0.42); background-color: rgba(244, 174, 50, 0.10); }
+        .cs-card.green { border-color: rgba(32, 212, 123, 0.42); background-color: rgba(32, 212, 123, 0.10); }
+        .cs-card.violet { border-color: rgba(93, 67, 255, 0.46); background-color: rgba(93, 67, 255, 0.12); }
+        .cs-card.pink { border-color: rgba(255, 95, 159, 0.44); background-color: rgba(255, 95, 159, 0.10); }
+        .cs-card.neutral { border-color: rgba(181, 176, 255, 0.32); }
+
+        .cs-card span {
+            display: block;
+            color: var(--dim);
+            font-size: 0.82rem;
+            font-weight: 750;
+            letter-spacing: 0.02em;
+        }
+
+        .cs-card strong {
+            display: block;
+            margin-top: 0.62rem;
+            color: #ffffff;
+            font-size: 2rem;
+            line-height: 1;
+            font-weight: 850;
+            letter-spacing: 0;
+        }
+
+        div[data-testid="stButton"] > button {
+            min-height: 3.2rem;
+            border-radius: 8px;
+            border: 1px solid rgba(181, 176, 255, 0.28);
+            background: rgba(17, 17, 27, 0.82);
+            color: #f5f2ff;
+            font-weight: 750;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        div[data-testid="stButton"] > button:hover {
+            border-color: rgba(255, 95, 159, 0.62);
+            background: rgba(24, 21, 38, 0.95);
+            color: #ffffff;
+        }
+
+        div[data-testid="stButton"] > button[kind="primary"],
+        button[data-testid="stBaseButton-primary"] {
+            background: linear-gradient(90deg, rgba(93, 67, 255, 0.88), rgba(255, 95, 159, 0.66));
+            border-color: rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+        }
+
+        [data-baseweb="input"] > div,
+        [data-baseweb="select"] > div,
+        textarea {
+            background-color: rgba(8, 8, 15, 0.92) !important;
+            border: 1px solid rgba(181, 176, 255, 0.2) !important;
+            border-radius: 8px !important;
+            color: #ffffff !important;
+        }
+
+        [data-testid="stTabs"] [role="tablist"] {
+            gap: 0.7rem;
+            border-bottom: 1px solid rgba(181, 176, 255, 0.18);
+        }
+
+        [data-testid="stTabs"] [role="tab"] {
+            min-height: 3rem;
+            padding: 0 1.15rem;
+            border-radius: 8px 8px 0 0;
+            color: var(--muted);
+            font-weight: 800;
+        }
+
+        [data-testid="stTabs"] [aria-selected="true"] {
+            color: #ffffff;
+            background: rgba(93, 67, 255, 0.18);
+            border: 1px solid rgba(181, 176, 255, 0.22);
+            border-bottom-color: transparent;
+        }
+
+        [data-testid="stDataFrame"] {
+            border: 1px solid rgba(181, 176, 255, 0.18);
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(6, 6, 12, 0.82);
+        }
+
+        [data-testid="stMetric"] {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(181, 176, 255, 0.16);
+            border-radius: 8px;
+            padding: 1rem 1.05rem;
+        }
+
+        [data-testid="stExpander"], [data-testid="stForm"], div[data-testid="stVerticalBlockBorderWrapper"] {
+            border-color: rgba(181, 176, 255, 0.2) !important;
+            border-radius: 8px !important;
+            background: rgba(8, 8, 15, 0.68) !important;
+        }
+
+        hr {
+            border-color: rgba(181, 176, 255, 0.18);
+            margin: 2rem 0;
+        }
+
+        .cs-user-card {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 95, 159, 0.24);
+            background: linear-gradient(120deg, rgba(93, 67, 255, 0.15), rgba(255, 95, 159, 0.10));
+        }
+
+        .cs-user-card .label {
+            color: var(--dim);
+            font-size: 0.72rem;
+            font-weight: 850;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .cs-user-card .name {
+            margin-top: 0.7rem;
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 850;
+        }
+
+        .cs-user-card .email {
+            margin-top: 0.25rem;
+            color: var(--muted);
+            font-size: 0.86rem;
+        }
+
+        @media (max-width: 1100px) {
+            .cs-metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .cs-hero { padding: 2rem; }
+        }
+
+        @media (max-width: 720px) {
+            .block-container { padding-top: 1.4rem; }
+            .cs-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .cs-hero { padding: 1.5rem; }
+            .cs-hero h1 { font-size: 2rem; }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_page_hero(kicker: str, title: str, subtitle: str) -> None:
+    st.markdown(
+        f"""
+        <section class="cs-hero">
+            <div class="cs-kicker">{escape(kicker)}</div>
+            <h1>{escape(title)}</h1>
+            <p>{escape(subtitle)}</p>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_portfolio_cards(accounts: list[dict]) -> None:
+    counts = {lane: sum(1 for a in accounts if a["current_lane"] == lane)
+              for lane in ("RED", "YELLOW", "GREEN")}
+    stale = sum(1 for a in accounts if int(a.get("days_since_last_contact", 0)) > 14)
+    arr_total = sum(float(a.get("arr", 0)) for a in accounts)
+
+    cards = [
+        ("Total Accounts", f"{len(accounts)}", "neutral"),
+        ("Human Touch", f"{counts['RED']}", "red"),
+        ("Tech Touch", f"{counts['YELLOW']}", "yellow"),
+        ("Monitor", f"{counts['GREEN']}", "green"),
+        ("Stale Contact", f"{stale}", "violet"),
+        ("Total ARR", f"${arr_total / 1000:.0f}K", "pink"),
+    ]
+    html = ['<div class="cs-metric-grid">']
+    for label, value, tone in cards:
+        html.append(
+            f'<div class="cs-card {tone}"><span>{escape(label)}</span>'
+            f'<strong>{escape(value)}</strong></div>'
+        )
+    html.append("</div>")
+    st.markdown("".join(html), unsafe_allow_html=True)
+
+# ---------------------------------------------------------------------------
 # Data helpers
 # ---------------------------------------------------------------------------
 
@@ -262,8 +586,9 @@ def _maybe_mock_openai(mock_content: str):
 
 def render_sidebar() -> None:
     with st.sidebar:
-        st.title("🧠 CS Intelligence")
-        st.caption("Ontop Customer Success System")
+        st.markdown("### WORKSPACE")
+        st.title("CS Intelligence")
+        st.caption("Customer success coverage workspace")
 
         if USE_MOCK_DATA:
             st.info("🔧 Mock mode — no real API calls", icon="ℹ️")
@@ -305,6 +630,16 @@ def render_sidebar() -> None:
 
         st.divider()
         st.caption("Sprint 1 · Mock Data Mode")
+        st.markdown(
+            """
+            <div class="cs-user-card">
+                <div class="label">Signed in</div>
+                <div class="name">Andres Rojas</div>
+                <div class="email">CS Intelligence Admin</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -312,12 +647,18 @@ def render_sidebar() -> None:
 # ---------------------------------------------------------------------------
 
 def render_tab_accounts() -> None:
-    st.header("Account Overview")
+    render_page_hero(
+        "Portfolio",
+        "Monitor account health, risk lanes, and coverage movement.",
+        "Use this view to spot human-touch accounts, route tech-touch coverage, and keep the book of business current.",
+    )
 
     accounts = load_accounts()
     if not accounts:
         st.warning("No accounts found — check `data/accounts.json`.")
         return
+
+    render_portfolio_cards(accounts)
 
     # --- Lane filter buttons ---
     col_all, col_red, col_yel, col_grn, _spacer = st.columns([1, 1, 1, 1, 5])
@@ -506,10 +847,10 @@ def _render_context_fields(template_type: str) -> dict:
 
 
 def render_tab_tech_touch() -> None:
-    st.header("Tech-Touch Agent")
-    st.write(
-        "Generate personalised outreach emails for YELLOW-lane accounts. "
-        "All emails require CSM approval before sending."
+    render_page_hero(
+        "Tech Touch",
+        "Draft customer outreach for accounts that need a light human nudge.",
+        "Generate tailored emails for YELLOW-lane accounts and keep every message in the CSM approval queue.",
     )
 
     accounts = load_accounts()
@@ -659,7 +1000,11 @@ def render_tab_tech_touch() -> None:
 # ---------------------------------------------------------------------------
 
 def render_tab_sprint_review() -> None:
-    st.header("Sprint Review Engine")
+    render_page_hero(
+        "Sprint Review",
+        "Review account movement and prioritize the next CSM actions.",
+        "Run the bi-weekly rotation to detect graduations, escalations, and the accounts that need attention now.",
+    )
 
     latest_report = get_latest_report()
 
@@ -770,6 +1115,7 @@ def render_tab_sprint_review() -> None:
 # Main layout
 # ---------------------------------------------------------------------------
 
+inject_theme()
 render_sidebar()
 
 tab1, tab2, tab3 = st.tabs([
