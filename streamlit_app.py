@@ -156,281 +156,388 @@ for _k, _v in _SESSION_DEFAULTS.items():
 # ---------------------------------------------------------------------------
 
 def inject_theme() -> None:
-    """Applies the dark workspace styling used across the app."""
+    """Applies the shared Ontop-inspired theme from cx-sales-agent."""
     st.markdown(
         """
         <style>
         :root {
-            --bg: #030306;
-            --panel: #0b0b12;
-            --panel-2: #11111b;
-            --panel-3: #171623;
-            --line: rgba(181, 176, 255, 0.22);
-            --line-strong: rgba(181, 176, 255, 0.36);
-            --text: #f4f1ff;
-            --muted: #aaa7bb;
-            --dim: #727081;
-            --violet: #5d43ff;
-            --pink: #ff5f9f;
-            --green: #20d47b;
-            --amber: #f4ae32;
-            --red: #ff4b5f;
+            --ontop-purple: #261C94;
+            --ontop-coral: #E35276;
+            --bg-primary: #000000;
+            --bg-card: #060609;
+            --bg-input: #1A1A24;
+            --text-primary: #FFFFFF;
+            --text-secondary: #B8B8C8;
+            --text-muted: #6B6B7E;
+            --border-color: #2A2A3E;
         }
 
         .stApp {
             background:
-                radial-gradient(circle at 80% 0%, rgba(255, 95, 159, 0.18), transparent 30rem),
-                radial-gradient(circle at 18% 4%, rgba(93, 67, 255, 0.24), transparent 34rem),
-                linear-gradient(180deg, #060611 0%, var(--bg) 42%, #000000 100%);
-            color: var(--text);
+                radial-gradient(circle at top left, rgba(38, 28, 148, 0.35), transparent 32%),
+                radial-gradient(circle at top right, rgba(227, 82, 118, 0.20), transparent 28%),
+                linear-gradient(180deg, #050507 0%, #000000 100%);
+            color: var(--text-primary);
+        }
+
+        [data-testid="stHeader"] {
+            background: rgba(0, 0, 0, 0);
+        }
+
+        [data-testid="stSidebar"] {
+            background:
+                linear-gradient(180deg, rgba(38, 28, 148, 0.18), rgba(6, 6, 9, 0.94) 26%),
+                #060609;
+            border-right: 1px solid var(--border-color);
+        }
+
+        [data-testid="stSidebar"] * {
+            color: var(--text-primary);
+        }
+
+        [data-testid="stSidebarNav"],
+        [data-testid="stSidebarNavSeparator"] {
+            display: none;
         }
 
         .block-container {
             max-width: 1480px;
-            padding-top: 3.3rem;
-            padding-bottom: 4rem;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
         }
 
-        [data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #090912 0%, #050507 56%, #030304 100%);
-            border-right: 1px solid var(--line-strong);
+        h1, h2, h3 {
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
         }
 
-        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-            gap: 1rem;
+        p, li, label, .stMarkdown, .stCaption, [data-testid="stMarkdownContainer"] {
+            color: var(--text-secondary);
         }
 
-        [data-testid="stSidebar"] h1 {
-            font-size: 1.62rem;
-            letter-spacing: 0;
-            margin-top: 1rem;
-        }
-
-        [data-testid="stSidebar"] h3 {
-            color: var(--dim);
-            font-size: 0.78rem;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        [data-testid="stSidebar"] [data-testid="stMetric"] {
-            background: rgba(255, 255, 255, 0.035);
-            border: 1px solid rgba(181, 176, 255, 0.14);
-            border-radius: 8px;
-            padding: 0.7rem 0.75rem;
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-            color: var(--text);
-            letter-spacing: 0;
-        }
-
-        p, li, label, [data-testid="stMarkdownContainer"] {
-            color: var(--muted);
-        }
-
-        .cs-hero {
-            margin: 0.4rem 0 2.1rem;
-            padding: 2.35rem 2.55rem;
-            border: 1px solid rgba(255, 95, 159, 0.28);
-            border-radius: 8px;
-            background:
-                linear-gradient(115deg, rgba(93, 67, 255, 0.62) 0%, rgba(33, 24, 91, 0.52) 48%, rgba(255, 95, 159, 0.16) 100%),
-                rgba(13, 13, 22, 0.92);
-            box-shadow: 0 22px 70px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255,255,255,0.08);
-        }
-
-        .cs-kicker {
-            display: inline-flex;
-            align-items: center;
-            min-height: 2rem;
-            padding: 0.28rem 0.9rem;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.12);
-            color: #ffffff;
-            font-size: 0.72rem;
-            font-weight: 850;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .cs-hero h1 {
-            max-width: 1100px;
-            margin: 1.65rem 0 1.25rem;
-            color: #ffffff;
-            font-size: clamp(2.2rem, 4.2vw, 4rem);
-            line-height: 1.16;
-            font-weight: 850;
-            letter-spacing: 0;
-        }
-
-        .cs-hero p {
-            max-width: 980px;
-            margin: 0;
-            color: rgba(255, 255, 255, 0.82);
-            font-size: 1.08rem;
-            line-height: 1.55;
-            font-weight: 600;
-        }
-
-        .cs-metric-grid {
-            display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
-            gap: 0.9rem;
-            margin: 1.25rem 0 2rem;
-        }
-
-        .cs-card {
-            min-height: 6.25rem;
-            padding: 1.1rem 1.25rem;
-            border-radius: 8px;
-            border: 1px solid rgba(181, 176, 255, 0.2);
-            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015));
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-        }
-
-        .cs-card.red { border-color: rgba(255, 75, 95, 0.42); background-color: rgba(255, 75, 95, 0.10); }
-        .cs-card.yellow { border-color: rgba(244, 174, 50, 0.42); background-color: rgba(244, 174, 50, 0.10); }
-        .cs-card.green { border-color: rgba(32, 212, 123, 0.42); background-color: rgba(32, 212, 123, 0.10); }
-        .cs-card.violet { border-color: rgba(93, 67, 255, 0.46); background-color: rgba(93, 67, 255, 0.12); }
-        .cs-card.pink { border-color: rgba(255, 95, 159, 0.44); background-color: rgba(255, 95, 159, 0.10); }
-        .cs-card.neutral { border-color: rgba(181, 176, 255, 0.32); }
-
-        .cs-card span {
-            display: block;
-            color: var(--dim);
-            font-size: 0.82rem;
-            font-weight: 750;
-            letter-spacing: 0.02em;
-        }
-
-        .cs-card strong {
-            display: block;
-            margin-top: 0.62rem;
-            color: #ffffff;
-            font-size: 2rem;
-            line-height: 1;
-            font-weight: 850;
-            letter-spacing: 0;
-        }
-
-        div[data-testid="stButton"] > button {
-            min-height: 3.2rem;
-            border-radius: 8px;
-            border: 1px solid rgba(181, 176, 255, 0.28);
-            background: rgba(17, 17, 27, 0.82);
-            color: #f5f2ff;
-            font-weight: 750;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
-        }
-
-        div[data-testid="stButton"] > button:hover {
-            border-color: rgba(255, 95, 159, 0.62);
-            background: rgba(24, 21, 38, 0.95);
-            color: #ffffff;
-        }
-
-        div[data-testid="stButton"] > button[kind="primary"],
-        button[data-testid="stBaseButton-primary"] {
-            background: linear-gradient(90deg, rgba(93, 67, 255, 0.88), rgba(255, 95, 159, 0.66));
-            border-color: rgba(255, 255, 255, 0.18);
-            color: #ffffff;
-        }
-
+        .stTextInput input,
+        .stTextArea textarea,
+        .stSelectbox [data-baseweb="select"] > div,
+        .stMultiSelect [data-baseweb="select"] > div,
         [data-baseweb="input"] > div,
         [data-baseweb="select"] > div,
         textarea {
-            background-color: rgba(8, 8, 15, 0.92) !important;
-            border: 1px solid rgba(181, 176, 255, 0.2) !important;
-            border-radius: 8px !important;
-            color: #ffffff !important;
+            background: var(--bg-input) !important;
+            border: 1px solid var(--border-color) !important;
+            color: var(--text-primary) !important;
+            border-radius: 14px !important;
         }
 
-        [data-testid="stTabs"] [role="tablist"] {
-            gap: 0.7rem;
-            border-bottom: 1px solid rgba(181, 176, 255, 0.18);
-        }
-
-        [data-testid="stTabs"] [role="tab"] {
+        .stButton > button,
+        .stDownloadButton > button {
+            background: linear-gradient(135deg, var(--ontop-purple), var(--ontop-coral));
+            color: var(--text-primary);
+            border: 0;
+            border-radius: 999px;
+            font-weight: 600;
+            box-shadow: 0 10px 24px rgba(38, 28, 148, 0.28);
             min-height: 3rem;
-            padding: 0 1.15rem;
-            border-radius: 8px 8px 0 0;
-            color: var(--muted);
-            font-weight: 800;
         }
 
-        [data-testid="stTabs"] [aria-selected="true"] {
-            color: #ffffff;
-            background: rgba(93, 67, 255, 0.18);
-            border: 1px solid rgba(181, 176, 255, 0.22);
-            border-bottom-color: transparent;
+        .stButton > button:hover,
+        .stDownloadButton > button:hover {
+            filter: brightness(1.06);
+            color: var(--text-primary);
         }
 
-        [data-testid="stDataFrame"] {
-            border: 1px solid rgba(181, 176, 255, 0.18);
-            border-radius: 8px;
-            overflow: hidden;
-            background: rgba(6, 6, 12, 0.82);
-        }
-
-        [data-testid="stMetric"] {
+        .stButton > button[kind="secondary"],
+        button[data-testid="stBaseButton-secondary"] {
             background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(181, 176, 255, 0.16);
-            border-radius: 8px;
-            padding: 1rem 1.05rem;
+            border: 1px solid rgba(124, 115, 247, 0.28);
+            box-shadow: none;
         }
 
-        [data-testid="stExpander"], [data-testid="stForm"], div[data-testid="stVerticalBlockBorderWrapper"] {
-            border-color: rgba(181, 176, 255, 0.2) !important;
-            border-radius: 8px !important;
-            background: rgba(8, 8, 15, 0.68) !important;
+        .stButton > button[kind="tertiary"],
+        button[data-testid="stBaseButton-tertiary"] {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            box-shadow: none;
         }
 
-        hr {
-            border-color: rgba(181, 176, 255, 0.18);
-            margin: 2rem 0;
+        .stDataFrame,
+        [data-testid="stDataFrame"],
+        div[data-testid="stMetric"],
+        div[data-testid="stExpander"],
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            background: rgba(6, 6, 9, 0.82);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
         }
 
-        .cs-user-card {
-            margin-top: 1rem;
+        div[data-testid="stExpander"] {
+            margin-top: 0.85rem;
+            overflow: hidden;
+        }
+
+        div[data-testid="stMetric"] {
             padding: 1rem;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 95, 159, 0.24);
-            background: linear-gradient(120deg, rgba(93, 67, 255, 0.15), rgba(255, 95, 159, 0.10));
         }
 
-        .cs-user-card .label {
-            color: var(--dim);
+        .stAlert {
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        .ontop-hero {
+            padding: 1.5rem 1.75rem;
+            margin-bottom: 1.5rem;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background:
+                radial-gradient(circle at top right, rgba(227, 82, 118, 0.25), transparent 35%),
+                linear-gradient(135deg, rgba(38, 28, 148, 0.92), rgba(6, 6, 9, 0.94));
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+        }
+
+        .ontop-hero h1,
+        .ontop-hero h2,
+        .ontop-hero p {
+            color: #FFFFFF;
+            margin: 0;
+        }
+
+        .ontop-hero h2 {
+            font-size: clamp(2rem, 3.1vw, 3.2rem);
+            line-height: 1.18;
+            max-width: 1180px;
+        }
+
+        .ontop-hero p {
+            margin-top: 1.4rem;
+            max-width: 980px;
+            font-size: 1.08rem;
+            line-height: 1.5;
+        }
+
+        .ontop-eyebrow {
+            display: inline-block;
+            margin-bottom: 0.7rem;
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.10);
+            color: #FFFFFF;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .ontop-mini-stats {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin: 0.65rem 0 1.35rem;
+        }
+
+        .ontop-mini-stat {
+            padding: 0.85rem 0.95rem;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background:
+                radial-gradient(circle at top right, rgba(227, 82, 118, 0.10), transparent 35%),
+                linear-gradient(180deg, rgba(26, 26, 36, 0.95), rgba(6, 6, 9, 0.95));
+        }
+
+        .ontop-mini-stat-purple {
+            background:
+                radial-gradient(circle at top right, rgba(124, 115, 247, 0.18), transparent 35%),
+                linear-gradient(180deg, rgba(27, 24, 57, 0.96), rgba(10, 10, 22, 0.96));
+            border-color: rgba(124, 115, 247, 0.22);
+        }
+
+        .ontop-mini-stat-green {
+            background:
+                radial-gradient(circle at top right, rgba(34, 197, 94, 0.18), transparent 35%),
+                linear-gradient(180deg, rgba(12, 40, 26, 0.96), rgba(6, 18, 11, 0.96));
+            border-color: rgba(34, 197, 94, 0.22);
+        }
+
+        .ontop-mini-stat-coral {
+            background:
+                radial-gradient(circle at top right, rgba(227, 82, 118, 0.18), transparent 35%),
+                linear-gradient(180deg, rgba(40, 15, 25, 0.96), rgba(16, 7, 12, 0.96));
+            border-color: rgba(227, 82, 118, 0.22);
+        }
+
+        .ontop-mini-stat-amber {
+            background:
+                radial-gradient(circle at top right, rgba(245, 158, 11, 0.18), transparent 35%),
+                linear-gradient(180deg, rgba(45, 27, 9, 0.96), rgba(18, 11, 5, 0.96));
+            border-color: rgba(245, 158, 11, 0.22);
+        }
+
+        .ontop-mini-stat-red {
+            background:
+                radial-gradient(circle at top right, rgba(239, 68, 68, 0.18), transparent 35%),
+                linear-gradient(180deg, rgba(45, 14, 14, 0.96), rgba(20, 7, 7, 0.96));
+            border-color: rgba(239, 68, 68, 0.22);
+        }
+
+        .ontop-mini-stat span {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .ontop-mini-stat strong {
+            display: block;
+            color: #FFFFFF;
+            font-size: 1.9rem;
+            line-height: 1;
+        }
+
+        .ontop-section-head {
+            margin: 0.25rem 0 0.75rem;
+        }
+
+        .ontop-section-head h3 {
+            margin: 0;
+        }
+
+        .ontop-section-head p {
+            margin: 0.25rem 0 0;
+            color: var(--text-secondary);
+        }
+
+        .ontop-table-shell,
+        .ontop-chart-shell {
+            padding: 0;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background:
+                radial-gradient(circle at top right, rgba(38, 28, 148, 0.12), transparent 28%),
+                linear-gradient(180deg, rgba(6, 6, 9, 0.96), rgba(26, 26, 36, 0.92));
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .ontop-sidebar-brand {
+            padding: 0.1rem 0 0.75rem;
+        }
+
+        .ontop-sidebar-brand h1 {
+            margin: 0.15rem 0 0;
+            font-size: 1.55rem;
+            line-height: 1;
+        }
+
+        .ontop-sidebar-brand p {
+            margin: 0.35rem 0 0;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+
+        .ontop-sidebar-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.28rem 0.55rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #FFFFFF;
             font-size: 0.72rem;
-            font-weight: 850;
+            font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
 
-        .cs-user-card .name {
-            margin-top: 0.7rem;
-            color: #ffffff;
+        .ontop-sidebar-section-label {
+            margin: 0.9rem 0 0.4rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .ontop-sidebar-user {
+            padding: 0.95rem;
+            border-radius: 18px;
+            border: 1px solid var(--border-color);
+            background:
+                radial-gradient(circle at top right, rgba(227, 82, 118, 0.14), transparent 36%),
+                linear-gradient(180deg, rgba(26, 26, 36, 0.96), rgba(6, 6, 9, 0.96));
+            margin-top: 1rem;
+            margin-bottom: 0.65rem;
+            display: grid;
+            grid-template-columns: 2.5rem 1fr;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .ontop-sidebar-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(38, 28, 148, 0.95), rgba(227, 82, 118, 0.8));
+            color: #FFFFFF;
+            font-size: 0.92rem;
+            font-weight: 800;
+        }
+
+        .ontop-sidebar-user strong {
+            display: block;
+            color: #FFFFFF;
             font-size: 1rem;
-            font-weight: 850;
+            margin-bottom: 0.2rem;
         }
 
-        .cs-user-card .email {
-            margin-top: 0.25rem;
-            color: var(--muted);
-            font-size: 0.86rem;
+        .ontop-sidebar-user span {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            word-break: break-word;
         }
 
-        @media (max-width: 1100px) {
-            .cs-metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-            .cs-hero { padding: 2rem; }
+        .ontop-sidebar-user-label {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.22rem;
         }
 
-        @media (max-width: 720px) {
-            .block-container { padding-top: 1.4rem; }
-            .cs-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .cs-hero { padding: 1.5rem; }
-            .cs-hero h1 { font-size: 2rem; }
+        [data-testid="stTabs"] [role="tablist"] {
+            gap: 0.55rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        [data-testid="stTabs"] [role="tab"] {
+            border-radius: 16px 16px 0 0;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        [data-testid="stTabs"] [aria-selected="true"] {
+            color: #FFFFFF;
+            background: linear-gradient(135deg, rgba(38, 28, 148, 0.46), rgba(227, 82, 118, 0.26));
+        }
+
+        hr {
+            border-color: var(--border-color);
+            margin: 2rem 0;
+        }
+
+        code {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            color: #FFFFFF;
+        }
+
+        @media (max-width: 700px) {
+            .ontop-mini-stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
         </style>
         """,
@@ -441,9 +548,9 @@ def inject_theme() -> None:
 def render_page_hero(kicker: str, title: str, subtitle: str) -> None:
     st.markdown(
         f"""
-        <section class="cs-hero">
-            <div class="cs-kicker">{escape(kicker)}</div>
-            <h1>{escape(title)}</h1>
+        <section class="ontop-hero">
+            <span class="ontop-eyebrow">{escape(kicker)}</span>
+            <h2>{escape(title)}</h2>
             <p>{escape(subtitle)}</p>
         </section>
         """,
@@ -458,17 +565,17 @@ def render_portfolio_cards(accounts: list[dict]) -> None:
     arr_total = sum(float(a.get("arr", 0)) for a in accounts)
 
     cards = [
-        ("Total Accounts", f"{len(accounts)}", "neutral"),
-        ("Human Touch", f"{counts['RED']}", "red"),
-        ("Tech Touch", f"{counts['YELLOW']}", "yellow"),
-        ("Monitor", f"{counts['GREEN']}", "green"),
-        ("Stale Contact", f"{stale}", "violet"),
-        ("Total ARR", f"${arr_total / 1000:.0f}K", "pink"),
+        ("Total Accounts", f"{len(accounts)}", ""),
+        ("Human Touch", f"{counts['RED']}", "ontop-mini-stat-red"),
+        ("Tech Touch", f"{counts['YELLOW']}", "ontop-mini-stat-amber"),
+        ("Monitor", f"{counts['GREEN']}", "ontop-mini-stat-green"),
+        ("Stale Contact", f"{stale}", "ontop-mini-stat-purple"),
+        ("Total ARR", f"${arr_total / 1000:.0f}K", "ontop-mini-stat-coral"),
     ]
-    html = ['<div class="cs-metric-grid">']
+    html = ['<div class="ontop-mini-stats">']
     for label, value, tone in cards:
         html.append(
-            f'<div class="cs-card {tone}"><span>{escape(label)}</span>'
+            f'<div class="ontop-mini-stat {tone}"><span>{escape(label)}</span>'
             f'<strong>{escape(value)}</strong></div>'
         )
     html.append("</div>")
@@ -586,9 +693,16 @@ def _maybe_mock_openai(mock_content: str):
 
 def render_sidebar() -> None:
     with st.sidebar:
-        st.markdown("### WORKSPACE")
-        st.title("CS Intelligence")
-        st.caption("Customer success coverage workspace")
+        st.markdown(
+            """
+            <div class="ontop-sidebar-brand">
+                <span class="ontop-sidebar-badge">Workspace</span>
+                <h1>CS Intelligence</h1>
+                <p>Customer success coverage workspace</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         if USE_MOCK_DATA:
             st.info("🔧 Mock mode — no real API calls", icon="ℹ️")
@@ -600,7 +714,7 @@ def render_sidebar() -> None:
         counts = {lane: sum(1 for a in accounts if a["current_lane"] == lane)
                   for lane in ("RED", "YELLOW", "GREEN")}
 
-        st.subheader("Portfolio")
+        st.markdown('<div class="ontop-sidebar-section-label">Portfolio</div>', unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         c1.metric("🔴", counts["RED"])
         c2.metric("🟡", counts["YELLOW"])
@@ -612,7 +726,7 @@ def render_sidebar() -> None:
         # Pending approvals
         pending = sum(1 for a in load_approvals() if a["status"] == "pending_approval")
         approved = sum(1 for a in load_approvals() if a["status"] == "approved")
-        st.subheader("Email Queue")
+        st.markdown('<div class="ontop-sidebar-section-label">Email Queue</div>', unsafe_allow_html=True)
         a1, a2 = st.columns(2)
         a1.metric("⏳ Pending", pending)
         a2.metric("✅ Approved", approved)
@@ -620,7 +734,7 @@ def render_sidebar() -> None:
         st.divider()
 
         # Agent last-run status
-        st.subheader("Agent Status")
+        st.markdown('<div class="ontop-sidebar-section-label">Agent Status</div>', unsafe_allow_html=True)
         router_ts = st.session_state.last_router_run or "—"
         st.caption(f"Coverage Router:  {router_ts}")
 
@@ -632,10 +746,13 @@ def render_sidebar() -> None:
         st.caption("Sprint 1 · Mock Data Mode")
         st.markdown(
             """
-            <div class="cs-user-card">
-                <div class="label">Signed in</div>
-                <div class="name">Andres Rojas</div>
-                <div class="email">CS Intelligence Admin</div>
+            <div class="ontop-sidebar-user">
+                <div class="ontop-sidebar-avatar">AR</div>
+                <div>
+                    <span class="ontop-sidebar-user-label">Signed in</span>
+                    <strong>Andres Rojas</strong>
+                    <span>CS Intelligence Admin</span>
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
